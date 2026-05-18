@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Painel do Barbeiro</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #06070a;
+            color: white;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .title {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #9ca3af;
+            margin-bottom: 32px;
+        }
+
+        .date-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .date-btn {
+            padding: 16px 12px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, .08);
+            background: #0f1117;
+            color: white;
+            cursor: pointer;
+            transition: .2s;
+            font-weight: 600;
+        }
+
+        .date-btn.active {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            border: none;
+        }
+
+        .admin-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .admin-item {
+            padding: 24px;
+            border-radius: 24px;
+            background: #0f1117;
+            border: 1px solid rgba(255, 255, 255, .06);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .admin-name {
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .admin-service {
+            font-size: 18px;
+            color: #d4d4d8;
+        }
+
+        .admin-date {
+            font-size: 15px;
+            line-height: 1.5;
+            color: #9ca3af;
+        }
+
+        .admin-phone {
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .admin-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            border: none;
+            border-radius: 18px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: .2s;
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: .7;
+            cursor: not-allowed;
+        }
+
+        .btn-whatsapp {
+            background: #22c55e;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+        }
+
+        .status {
+            margin-bottom: 20px;
+            padding: 18px;
+            border-radius: 18px;
+            display: none;
+            font-weight: 600;
+        }
+
+        .status.success {
+            display: block;
+            background: rgba(34, 197, 94, .12);
+            border: 1px solid rgba(34, 197, 94, .2);
+            color: #86efac;
+        }
+
+        .status.error {
+            display: block;
+            background: rgba(239, 68, 68, .12);
+            border: 1px solid rgba(239, 68, 68, .2);
+            color: #fca5a5;
+        }
+
+        .empty {
+            padding: 30px;
+            border-radius: 24px;
+            background: #0f1117;
+            border: 1px solid rgba(255, 255, 255, .06);
+            text-align: center;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="title">
+            Painel do Barbeiro
+        </div>
+
+        <div class="subtitle">
+            Visualize, cancele e gerencie horários.
+        </div>
+
+        <div class="date-list" id="dateList"></div>
+
+        <div id="status" class="status"></div>
+
+        <div class="admin-list" id="adminList">
+
+            <div class="empty">
+                Carregando agendamentos...
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4vpa_x1IaSs1FDD7zFi2X2Y3u58fl5o-TcalFcpakG-1o1ZlxnfjS0-JJHF_IvVkJ/exec";
+
+        const adminList = document.getElementById("adminList");
+        const statusDiv = document.getElementById("status");
+        const dateList = document.getElementById("dateList");
+
+        let bookedAppointments = [];
+        let selectedDate = null;
+
+        function generateDates() {
+
+            const today = new Date();
+
+            let added = 0;
+            let i = 0;
+
+            while (added < 7) {
+
+                const date = new Date();
+                date.setDate(today.getDate() + i);
+
+                i++;
+
+                const day = date.getDay();
+
+                if (day === 0) {
+                    continue;
+                }
+
+                const formatted = date.toISOString().split("T")[0];
+
+                const button = document.createElement("button");
+
+                button.className = "date-btn";
+
+                button.innerHTML = `
+<div>${date.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
+<div>${date.toLocaleDateString('pt-BR')}</div>
+`;
+
+                button.onclick = () => {
+
+                    document.querySelectorAll(".date-btn")
+                        .forEach(btn => btn.classList.remove("active"));
+
+                    button.classList.add("active");
+
+                    selectedDate = formatted;
+
+                    renderAdmin();
+
+                };
+
+                dateList.appendChild(button);
+
+                if (added === 0) {
+
+                    button.click();
+
+                }
+
+                added++;
+
+            }
+
+        }
+
+        async function loadAppointments(clearStatus = true) {
+
+            adminList.innerHTML = `
+<div class="empty">
+Carregando agendamentos...
+</div>
+`;
+
+            try {
+
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+
+                bookedAppointments = data;
+
+                renderAdmin();
+
+                if (clearStatus) {
+
+                    statusDiv.className = "status";
+
+                }
+
+            } catch (error) {
+
+                adminList.innerHTML = `
+<div class="empty">
+Erro ao carregar agendamentos.
+</div>
+`;
+
+                showStatus("Erro ao carregar agendamentos.", "error");
+
+            }
+
+        }
+
+        function renderAdmin() {
+
+            adminList.innerHTML = "";
+
+            const filteredAppointments = bookedAppointments.filter(item =>
+                item.date === selectedDate
+            );
+
+            if (filteredAppointments.length === 0) {
+
+                adminList.innerHTML = `
+<div class="empty">
+Nenhum horário reservado neste dia.
+</div>
+`;
+
+                return;
+
+            }
+
+            filteredAppointments.sort((a, b) =>
+                a.time.localeCompare(b.time)
+            );
+
+            filteredAppointments.forEach((item, index) => {
+
+                const div = document.createElement("div");
+
+                div.className = "admin-item";
+
+                const formattedDate = formatDate(item.date);
+
+                const phone = String(item.phone).replace(/\D/g, '');
+
+                div.innerHTML = `
+
+<div class="admin-name">
+${item.name}
+</div>
+
+<div class="admin-service">
+${item.service}
+</div>
+
+<div class="admin-date">
+📅 ${formattedDate}<br>
+⏰ ${item.time}
+</div>
+
+<div class="admin-phone">
+📞 ${item.phone}
+</div>
+
+<div class="admin-buttons">
+
+<a
+class="btn btn-whatsapp"
+target="_blank"
+href="https://wa.me/55${phone}">
+Chamar no WhatsApp
+</a>
+
+<button
+class="btn btn-danger"
+onclick="cancelAppointment('${item.date}','${item.time}', this)">
+Cancelar horário
+</button>
+
+</div>
+`;
+
+                adminList.appendChild(div);
+
+            });
+
+        }
+
+        function formatDate(dateString) {
+
+            const [year, month, day] = dateString.split("-");
+
+            return `${day}/${month}/${year}`;
+
+        }
+
+        async function cancelAppointment(date, time, button) {
+
+            button.disabled = true;
+            button.innerText = "CANCELANDO...";
+
+            const payload = {
+                action: "cancel",
+                date,
+                time
+            };
+
+            try {
+
+                await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                });
+
+                showStatus("Horário cancelado com sucesso.", "success");
+
+                await loadAppointments(false);
+
+                setTimeout(() => {
+
+                    statusDiv.className = "status";
+                    statusDiv.innerText = "";
+                    statusDiv.style.display = "none";
+
+                }, 1500);
+
+            } catch (error) {
+
+                button.disabled = false;
+                button.innerText = "Cancelar horário";
+
+                showStatus("Erro ao cancelar horário.", "error");
+
+            }
+
+        }
+
+        function showStatus(message, type) {
+
+            statusDiv.style.display = "block";
+
+            statusDiv.className = `status ${type}`;
+
+            statusDiv.innerText = message;
+
+        }
+
+        generateDates();
+        loadAppointments();
+
+    </script>
+
+</body>
+
+</html>

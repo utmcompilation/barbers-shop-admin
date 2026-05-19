@@ -10,7 +10,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     <style>
         * {
@@ -206,6 +207,65 @@
 
 <body>
 
+    <div id="loginScreen" style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100dvh;
+background:#06070a;
+display:flex;
+align-items:center;
+justify-content:center;
+padding:20px;
+z-index:99999;
+">
+
+        <div style="
+width:100%;
+max-width:420px;
+background:#0f1117;
+border:1px solid rgba(255,255,255,.06);
+border-radius:28px;
+padding:28px;
+">
+
+            <div style="
+font-size:32px;
+font-weight:800;
+margin-bottom:10px;
+">
+                Área do Barbeiro
+            </div>
+
+            <div style="
+color:#9ca3af;
+margin-bottom:24px;
+">
+                Digite a senha para continuar.
+            </div>
+
+            <input id="passwordInput" type="password" placeholder="Senha" style="
+width:100%;
+height:58px;
+border:none;
+outline:none;
+border-radius:18px;
+background:#181b22;
+color:white;
+padding:0 18px;
+font-size:16px;
+margin-bottom:16px;
+">
+
+            <button id="loginButton" class="btn btn-primary">
+                Entrar
+            </button>
+
+        </div>
+
+    </div>
+
     <div class="container">
 
         <div class="title">
@@ -231,6 +291,8 @@
     </div>
 
     <script>
+
+        const ADMIN_PASSWORD = "123456";
 
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYViXxZbzC1llDcssi1DiW4aZ_CJ_9TD6wxPpRhOcdTf9oKTO24L7QZCuGk-XplBlZ/exec";
 
@@ -467,14 +529,6 @@ Cancelar horário
                 showStatus("Horário cancelado com sucesso.", "success");
 
                 await loadAppointments(false);
-
-                setTimeout(() => {
-
-                    statusDiv.className = "status";
-                    statusDiv.innerText = "";
-                    statusDiv.style.display = "none";
-
-                }, 1500);
 
             } catch (error) {
 
@@ -740,14 +794,6 @@ Fechar
 
                     await loadAppointments(false);
 
-                    setTimeout(() => {
-
-                        statusDiv.className = "status";
-                        statusDiv.innerText = "";
-                        statusDiv.style.display = "none";
-
-                    }, 1500);
-
                 } catch (error) {
 
                     showStatus("Erro ao reagendar.", "error");
@@ -772,9 +818,71 @@ Fechar
 
         }
 
-        generateDates();
+        window.onload = () => {
 
-        loadAppointments();
+            const loginScreen =
+                document.getElementById("loginScreen");
+
+            const loginButton =
+                document.getElementById("loginButton");
+
+            const passwordInput =
+                document.getElementById("passwordInput");
+
+            function enterPanel() {
+
+                loginScreen.style.display = "none";
+
+                generateDates();
+
+                loadAppointments();
+
+            }
+
+            const savedPassword =
+                localStorage.getItem("barberAuth");
+
+            if (savedPassword === ADMIN_PASSWORD) {
+
+                enterPanel();
+
+            }
+
+            loginButton.onclick = () => {
+
+                const password = passwordInput.value;
+
+                if (password !== ADMIN_PASSWORD) {
+
+                    alert("Senha incorreta");
+
+                    return;
+
+                }
+
+                localStorage.setItem(
+                    "barberAuth",
+                    ADMIN_PASSWORD
+                );
+
+                enterPanel();
+
+            };
+
+            passwordInput.addEventListener(
+                "keypress",
+                (e) => {
+
+                    if (e.key === "Enter") {
+
+                        loginButton.click();
+
+                    }
+
+                }
+            );
+
+        };
 
     </script>
 

@@ -138,6 +138,10 @@
             background: #dc2626;
         }
 
+        .btn-primary {
+            background: #2563eb;
+        }
+
         .status {
             margin-bottom: 20px;
             padding: 18px;
@@ -167,6 +171,35 @@
             border: 1px solid rgba(255, 255, 255, .06);
             text-align: center;
             color: #9ca3af;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .time-slot {
+            padding: 14px;
+            border-radius: 16px;
+            text-align: center;
+            background: #181b22;
+            border: 1px solid rgba(255, 255, 255, .06);
+            cursor: pointer;
+            transition: .2s;
+            font-weight: 600;
+        }
+
+        .time-slot.selected {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            border: none;
+        }
+
+        .time-slot.booked {
+            opacity: .35;
+            cursor: not-allowed;
+            text-decoration: line-through;
         }
     </style>
 </head>
@@ -199,7 +232,7 @@
 
     <script>
 
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4vpa_x1IaSs1FDD7zFi2X2Y3u58fl5o-TcalFcpakG-1o1ZlxnfjS0-JJHF_IvVkJ/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYViXxZbzC1llDcssi1DiW4aZ_CJ_9TD6wxPpRhOcdTf9oKTO24L7QZCuGk-XplBlZ/exec";
 
         const adminList = document.getElementById("adminList");
         const statusDiv = document.getElementById("status");
@@ -207,6 +240,27 @@
 
         let bookedAppointments = [];
         let selectedDate = null;
+
+        const hours = [
+            "08:00",
+            "08:30",
+            "09:00",
+            "09:30",
+            "10:00",
+            "10:30",
+            "11:00",
+            "11:30",
+            "13:00",
+            "13:30",
+            "14:00",
+            "14:30",
+            "15:00",
+            "15:30",
+            "16:00",
+            "16:30",
+            "17:00",
+            "17:30"
+        ];
 
         function generateDates() {
 
@@ -218,6 +272,7 @@
             while (added < 7) {
 
                 const date = new Date();
+
                 date.setDate(today.getDate() + i);
 
                 i++;
@@ -241,7 +296,8 @@
 
                 button.onclick = () => {
 
-                    document.querySelectorAll(".date-btn")
+                    document
+                        .querySelectorAll(".date-btn")
                         .forEach(btn => btn.classList.remove("active"));
 
                     button.classList.add("active");
@@ -255,9 +311,7 @@
                 dateList.appendChild(button);
 
                 if (added === 0) {
-
                     button.click();
-
                 }
 
                 added++;
@@ -277,6 +331,7 @@ Carregando agendamentos...
             try {
 
                 const response = await fetch(SCRIPT_URL);
+
                 const data = await response.json();
 
                 bookedAppointments = data;
@@ -284,9 +339,7 @@ Carregando agendamentos...
                 renderAdmin();
 
                 if (clearStatus) {
-
                     statusDiv.className = "status";
-
                 }
 
             } catch (error) {
@@ -327,7 +380,7 @@ Nenhum horário reservado neste dia.
                 a.time.localeCompare(b.time)
             );
 
-            filteredAppointments.forEach((item, index) => {
+            filteredAppointments.forEach(item => {
 
                 const div = document.createElement("div");
 
@@ -366,6 +419,12 @@ Chamar no WhatsApp
 </a>
 
 <button
+class="btn btn-primary"
+onclick="rescheduleAppointment('${item.date}','${item.time}')">
+Reagendar horário
+</button>
+
+<button
 class="btn btn-danger"
 onclick="cancelAppointment('${item.date}','${item.time}', this)">
 Cancelar horário
@@ -391,19 +450,18 @@ Cancelar horário
         async function cancelAppointment(date, time, button) {
 
             button.disabled = true;
-            button.innerText = "CANCELANDO...";
 
-            const payload = {
-                action: "cancel",
-                date,
-                time
-            };
+            button.innerText = "CANCELANDO...";
 
             try {
 
                 await fetch(SCRIPT_URL, {
                     method: "POST",
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        action: "cancel",
+                        date,
+                        time
+                    })
                 });
 
                 showStatus("Horário cancelado com sucesso.", "success");
@@ -421,11 +479,282 @@ Cancelar horário
             } catch (error) {
 
                 button.disabled = false;
+
                 button.innerText = "Cancelar horário";
 
                 showStatus("Erro ao cancelar horário.", "error");
 
             }
+
+        }
+
+        async function rescheduleAppointment(oldDate, oldTime) {
+
+            const overlay = document.createElement("div");
+
+            overlay.style.cssText = `
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.82);
+backdrop-filter:blur(8px);
+display:flex;
+align-items:center;
+justify-content:center;
+padding:20px;
+z-index:9999;
+`;
+
+            overlay.innerHTML = `
+
+<div style="
+width:100%;
+max-width:650px;
+background:#0f1117;
+border:1px solid rgba(255,255,255,.08);
+border-radius:28px;
+padding:28px;
+">
+
+<div style="
+font-size:30px;
+font-weight:800;
+margin-bottom:10px;
+">
+Reagendar horário
+</div>
+
+<div style="
+color:#9ca3af;
+margin-bottom:28px;
+">
+Escolha uma nova data e horário.
+</div>
+
+<div id="modalDates" class="date-list"></div>
+
+<div id="modalTimes" class="time-grid"></div>
+
+<button
+id="confirmBtn"
+class="btn btn-primary"
+disabled>
+Confirmar reagendamento
+</button>
+
+<button
+class="btn"
+style="
+background:#27272a;
+margin-top:12px;
+"
+onclick="this.closest('div').parentElement.remove()">
+Fechar
+</button>
+
+</div>
+`;
+
+            document.body.appendChild(overlay);
+
+            const modalDates = overlay.querySelector("#modalDates");
+            const modalTimes = overlay.querySelector("#modalTimes");
+            const confirmBtn = overlay.querySelector("#confirmBtn");
+
+            let selectedNewDate = null;
+            let selectedNewTime = null;
+
+            const today = new Date();
+
+            let added = 0;
+            let i = 0;
+
+            while (added < 7) {
+
+                const date = new Date();
+
+                date.setDate(today.getDate() + i);
+
+                i++;
+
+                const day = date.getDay();
+
+                if (day === 0) {
+                    continue;
+                }
+
+                const formatted = date.toISOString().split("T")[0];
+
+                const button = document.createElement("button");
+
+                button.className = "date-btn";
+
+                button.innerHTML = `
+<div>${date.toLocaleDateString('pt-BR', { weekday: 'short' })}</div>
+<div>${date.toLocaleDateString('pt-BR')}</div>
+`;
+
+                button.onclick = () => {
+
+                    modalDates
+                        .querySelectorAll(".date-btn")
+                        .forEach(btn => btn.classList.remove("active"));
+
+                    button.classList.add("active");
+
+                    selectedNewDate = formatted;
+
+                    renderAvailableTimes();
+
+                };
+
+                modalDates.appendChild(button);
+
+                if (added === 0) {
+                    button.click();
+                }
+
+                added++;
+
+            }
+
+            function renderAvailableTimes() {
+
+                modalTimes.innerHTML = "";
+
+                selectedNewTime = null;
+
+                confirmBtn.disabled = true;
+
+                let availableHours = [...hours];
+
+                const [year, month, day] = selectedNewDate.split("-");
+
+                const selectedDay = new Date(
+                    year,
+                    month - 1,
+                    day
+                ).getDay();
+
+                if (selectedDay === 6) {
+
+                    availableHours = hours.filter(hour => hour <= "11:30");
+
+                }
+
+                availableHours.forEach(hour => {
+
+                    const slot = document.createElement("button");
+
+                    slot.type = "button";
+
+                    slot.className = "time-slot";
+
+                    slot.innerText = hour;
+
+                    const occupied = bookedAppointments.find(item =>
+                        item.date === selectedNewDate &&
+                        item.time === hour
+                    );
+
+                    if (occupied) {
+
+                        slot.classList.add("booked");
+
+                        slot.disabled = true;
+
+                    }
+
+                    slot.onclick = () => {
+
+                        modalTimes
+                            .querySelectorAll(".time-slot")
+                            .forEach(el => el.classList.remove("selected"));
+
+                        slot.classList.add("selected");
+
+                        selectedNewTime = hour;
+
+                        confirmBtn.disabled = false;
+
+                    };
+
+                    modalTimes.appendChild(slot);
+
+                });
+
+            }
+
+            confirmBtn.onclick = async () => {
+
+                if (!selectedNewDate || !selectedNewTime) {
+                    return;
+                }
+
+                confirmBtn.disabled = true;
+
+                confirmBtn.innerText = "REAGENDANDO...";
+
+                try {
+
+                    const response = await fetch(SCRIPT_URL, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            action: "update",
+                            oldDate,
+                            oldTime,
+                            newDate: selectedNewDate,
+                            newTime: selectedNewTime
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (!result.success) {
+
+                        showStatus(
+                            result.message || "Erro ao reagendar.",
+                            "error"
+                        );
+
+                        confirmBtn.disabled = false;
+
+                        confirmBtn.innerText = "Confirmar reagendamento";
+
+                        return;
+
+                    }
+
+                    overlay.remove();
+
+                    showStatus(
+                        "Horário reagendado com sucesso.",
+                        "success"
+                    );
+
+                    await loadAppointments(false);
+
+                    setTimeout(() => {
+
+                        statusDiv.className = "status";
+                        statusDiv.innerText = "";
+                        statusDiv.style.display = "none";
+
+                    }, 1500);
+
+                } catch (error) {
+
+                    showStatus("Erro ao reagendar.", "error");
+
+                    confirmBtn.disabled = false;
+
+                    confirmBtn.innerText = "Confirmar reagendamento";
+
+                }
+
+            };
 
         }
 
@@ -440,6 +769,7 @@ Cancelar horário
         }
 
         generateDates();
+
         loadAppointments();
 
     </script>
